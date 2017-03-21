@@ -438,18 +438,11 @@ public class XContentMapValues {
 
         if (node instanceof Boolean) {
             booleanValue = (Boolean) node;
-        } else if (node instanceof Number) {
-            interpretedAsLenient = true;
-            booleanValue = ((Number) node).intValue() != 0;
         } else {
             String value = node.toString();
-            booleanValue = ((value.equals("false") || value.equals("0") || value.equals("off"))) == false;
-            interpretedAsLenient = Booleans.isStrictlyBoolean(value) == false;
+            booleanValue = Booleans.parseBoolean(value);
         }
 
-        if (interpretedAsLenient) {
-            DEPRECATION_LOGGER.deprecated("Expected a boolean [true/false] for property [{}] but got [{}]", name, node.toString());
-        }
         return booleanValue;
     }
 

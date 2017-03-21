@@ -100,22 +100,14 @@ public abstract class AbstractXContentParser implements XContentParser {
         String rawValue = null;
 
         Token token = currentToken();
-        if (token == Token.VALUE_NUMBER) {
-            interpretedAsLenient = true;
-            booleanValue = intValue() != 0;
-            rawValue = String.valueOf(intValue());
-        } else if (token == Token.VALUE_STRING) {
+        if (token == Token.VALUE_STRING) {
             rawValue = new String(textCharacters(), textOffset(), textLength());
-            interpretedAsLenient = Booleans.isStrictlyBoolean(rawValue) == false;
             booleanValue = Booleans.parseBoolean(rawValue, false /* irrelevant */);
         } else {
             booleanValue = doBooleanValue();
         }
-        if (interpretedAsLenient) {
-            deprecationLogger.deprecated("Expected a boolean [true/false] for property [{}] but got [{}]", currentName(), rawValue);
-        }
-        return booleanValue;
 
+        return booleanValue;
     }
 
     protected abstract boolean doBooleanValue() throws IOException;

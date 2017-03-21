@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class RestTable {
-    private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(RestRequest.class));
 
     public static RestResponse buildResponse(Table table, RestChannel channel) throws Exception {
         RestRequest request = channel.request();
@@ -194,11 +193,6 @@ public class RestTable {
             for (Table.Cell cell : table.getHeaders()) {
                 String d = cell.attr.get("default");
                 boolean defaultValue = Booleans.parseBoolean(d, true);
-                if (d != null && Booleans.isStrictlyBoolean(d) == false) {
-                    DEPRECATION_LOGGER.deprecated(
-                        "Expected a boolean [true/false] for attribute [default] of table header [{}] but got [{}]",
-                        cell.value.toString(), d);
-                }
                 if (defaultValue && checkOutputTimestamp(cell.value.toString(), request)) {
                     display.add(new DisplayHeader(cell.value.toString(), cell.value.toString()));
                 }

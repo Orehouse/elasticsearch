@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public final class IndexingSlowLog implements IndexingOperationListener {
-    private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(IndexingSlowLog.class));
 
     private final Index index;
     private boolean reformat;
@@ -86,10 +85,6 @@ public final class IndexingSlowLog implements IndexingOperationListener {
                     return Integer.parseInt(value, 10);
                 } catch (NumberFormatException e) {
                     boolean booleanValue = Booleans.parseBoolean(value, true);
-                    if (value != null && Booleans.isStrictlyBoolean(value) == false) {
-                        DEPRECATION_LOGGER.deprecated("Expected a boolean [true/false] or a number for setting [{}] but got [{}]",
-                            INDEX_INDEXING_SLOWLOG_PREFIX + ".source", value);
-                    }
                     return booleanValue ? Integer.MAX_VALUE : 0;
                 }
             }, Property.Dynamic, Property.IndexScope);

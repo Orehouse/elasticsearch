@@ -127,48 +127,6 @@ public class BooleanFieldMapperTests extends ESSingleNodeTestCase {
         assertEquals("{\"field\":{\"type\":\"boolean\",\"doc_values\":false,\"null_value\":true}}", builder.string());
     }
 
-    public void testParsesBooleansLenient() throws IOException {
-        String mapping = XContentFactory.jsonBuilder()
-            .startObject()
-                .startObject("type")
-                    .startObject("properties")
-                        .startObject("field1")
-                            .field("type", "boolean")
-                        .endObject()
-                        .startObject("field2")
-                            .field("type", "boolean")
-                        .endObject()
-                    .endObject()
-                .endObject()
-            .endObject().string();
-        DocumentMapper defaultMapper = parser.parse("type", new CompressedXContent(mapping));
-
-        String falsy = randomFrom("false", "off", "no", "0");
-        String truthy = randomFrom("true", "on", "yes", "1");
-
-        ParsedDocument parsedDoc = defaultMapper.parse("legacy", "type", "1", XContentFactory.jsonBuilder()
-            .startObject()
-                .field("field1", falsy)
-                .field("field2", truthy)
-            .endObject()
-            .bytes());
-        Document doc = parsedDoc.rootDoc();
-        assertEquals("F", doc.getField("field1").stringValue());
-        assertEquals("T", doc.getField("field2").stringValue());
-
-        List<String> expectedDeprecationWarnings = new ArrayList<>();
-        if (Booleans.isStrictlyBoolean(falsy) == false) {
-            expectedDeprecationWarnings.add("Expected a boolean [true/false] for property [field1] but got ["+ falsy + "]");
-        }
-        if (Booleans.isStrictlyBoolean(truthy) == false) {
-            expectedDeprecationWarnings.add("Expected a boolean [true/false] for property [field2] but got [" + truthy + "]");
-        }
-
-        if (expectedDeprecationWarnings.isEmpty() == false) {
-            assertWarnings(expectedDeprecationWarnings.toArray(new String[1]));
-        }
-    }
-
     public void testMultiFields() throws IOException {
         String mapping = XContentFactory.jsonBuilder().startObject().startObject("type")
                 .startObject("properties")

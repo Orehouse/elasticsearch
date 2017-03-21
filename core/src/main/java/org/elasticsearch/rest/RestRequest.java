@@ -48,7 +48,6 @@ import static org.elasticsearch.common.unit.ByteSizeValue.parseBytesSizeValue;
 import static org.elasticsearch.common.unit.TimeValue.parseTimeValue;
 
 public abstract class RestRequest implements ToXContent.Params {
-    private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(RestRequest.class));
 
     private final NamedXContentRegistry xContentRegistry;
     private final Map<String, String> params;
@@ -213,9 +212,6 @@ public abstract class RestRequest implements ToXContent.Params {
         if (rawParam != null && rawParam.length() == 0) {
             return true;
         } else {
-            if (rawParam != null && Booleans.isStrictlyBoolean(rawParam) == false) {
-                DEPRECATION_LOGGER.deprecated("Expected a boolean [true/false] for request parameter [{}] but got [{}]", key, rawParam);
-            }
             return Booleans.parseBoolean(rawParam, defaultValue);
         }
     }

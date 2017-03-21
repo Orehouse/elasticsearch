@@ -27,10 +27,10 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 
 public class BooleansTests extends ESTestCase {
-    private static final String[] NON_BOOLEANS = new String[]{"11", "00", "sdfsdfsf", "F", "T", "True", "False"};
-    private static final String[] BOOLEANS = new String[]{"true", "false", "on", "off", "yes", "no", "0", "1"};
-    private static final String[] TRUTHY = new String[]{"true", "on", "yes", "1"};
-    private static final String[] FALSY = new String[]{"false", "off", "no", "0"};
+    private static final String[] NON_BOOLEANS = new String[]{"11", "00", "sdfsdfsf", "F", "T", "True", "False", "on", "yes", "1", "off", "no", "0"};
+    private static final String[] BOOLEANS = new String[]{"true", "false"};
+    private static final String[] TRUTHY = new String[]{"true", "on"};
+    private static final String[] FALSY = new String[]{"false", "off"};
 
     public void testIsNonBoolean() {
         assertThat(Booleans.isBoolean(null, 0, 1), is(false));
@@ -38,7 +38,7 @@ public class BooleansTests extends ESTestCase {
         for (String nb : NON_BOOLEANS) {
             String t = "prefix" + nb + "suffix";
             assertFalse("recognized [" + nb + "] as boolean", Booleans.isBoolean(t.toCharArray(), "prefix".length(), nb.length()));
-            assertFalse("recognized [" + nb + "] as boolean", Booleans.isStrictlyBoolean(t));
+            assertFalse("recognized [" + nb + "] as boolean", Booleans.isBoolean(t));
         }
     }
 
@@ -54,14 +54,14 @@ public class BooleansTests extends ESTestCase {
     }
 
     public void testParseBooleanExact() {
-        assertTrue(Booleans.parseBooleanExact(randomFrom(TRUTHY)));
-        assertFalse(Booleans.parseBooleanExact(randomFrom(FALSY)));
+        assertTrue(Booleans.parseBoolean(randomFrom(TRUTHY)));
+        assertFalse(Booleans.parseBoolean(randomFrom(FALSY)));
     }
 
     public void testParseNonBooleanExact() {
-        expectThrows(IllegalArgumentException.class, () -> Booleans.parseBooleanExact(null));
+        expectThrows(IllegalArgumentException.class, () -> Booleans.parseBoolean(null));
         for (String nonBoolean : NON_BOOLEANS) {
-            expectThrows(IllegalArgumentException.class, () -> Booleans.parseBooleanExact(nonBoolean));
+            expectThrows(IllegalArgumentException.class, () -> Booleans.parseBoolean(nonBoolean));
         }
     }
 
@@ -70,7 +70,7 @@ public class BooleansTests extends ESTestCase {
             boolean defaultValue = randomFrom(Boolean.TRUE, Boolean.FALSE);
 
             expectThrows(IllegalArgumentException.class,
-                () -> Booleans.parseBooleanExact(nonBoolean, defaultValue));
+                () -> Booleans.parseBoolean(nonBoolean, defaultValue));
         }
     }
 

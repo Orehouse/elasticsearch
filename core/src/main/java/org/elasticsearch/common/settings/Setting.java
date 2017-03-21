@@ -680,11 +680,7 @@ public class Setting<T> extends ToXContentToBytes {
 
     private static Boolean parseBoolean(String key, String value) {
         // let the parser handle all cases for non-proper booleans without a deprecation warning by throwing IAE
-        boolean booleanValue = Booleans.parseBooleanExact(value);
-        if (Booleans.isStrictlyBoolean(value) == false) {
-            DeprecationLogger deprecationLogger = new DeprecationLogger(Loggers.getLogger(Setting.class));
-            deprecationLogger.deprecated("Expected a boolean [true/false] for setting [{}] but got [{}]", key, value);
-        }
+        boolean booleanValue = Booleans.parseBoolean(value);
         return booleanValue;
     }
 

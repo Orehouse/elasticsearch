@@ -42,8 +42,6 @@ import java.util.List;
  * a write operation is about to happen in a non existing index.
  */
 public final class AutoCreateIndex {
-    private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(AutoCreateIndex.class));
-
     public static final Setting<AutoCreate> AUTO_CREATE_INDEX_SETTING =
         new Setting<>("action.auto_create_index", "true", AutoCreate::new, Property.NodeScope, Setting.Property.Dynamic);
 
@@ -118,11 +116,7 @@ public final class AutoCreateIndex {
             boolean autoCreateIndex;
             List<Tuple<String, Boolean>> expressions = new ArrayList<>();
             try {
-                autoCreateIndex = Booleans.parseBooleanExact(value);
-                if (Booleans.isStrictlyBoolean(value) == false) {
-                    DEPRECATION_LOGGER.deprecated("Expected a boolean [true/false] or index name pattern for setting [{}] but got [{}]",
-                        AUTO_CREATE_INDEX_SETTING.getKey(), value);
-                }
+                autoCreateIndex = Booleans.parseBoolean(value);
             } catch (IllegalArgumentException ex) {
                 try {
                     String[] patterns = Strings.commaDelimitedListToStringArray(value);

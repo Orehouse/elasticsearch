@@ -30,17 +30,13 @@ import org.elasticsearch.common.settings.Setting.Property;
  * based on the number of datanodes in the cluster. This class handles all the parsing and streamlines the access to these values.
  */
 final class AutoExpandReplicas {
-    private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(AutoExpandReplicas.class));
 
     // the value we recognize in the "max" position to mean all the nodes
     private static final String ALL_NODES_VALUE = "all";
     public static final Setting<AutoExpandReplicas> SETTING = new Setting<>(IndexMetaData.SETTING_AUTO_EXPAND_REPLICAS, "false", (value) -> {
         final int min;
         final int max;
-        if (Booleans.isExplicitFalse(value)) {
-            if (Booleans.isStrictlyBoolean(value) == false) {
-                DEPRECATION_LOGGER.deprecated("Expected [false] for setting [{}] but got [{}]", IndexMetaData.SETTING_AUTO_EXPAND_REPLICAS, value);
-            }
+        if (Booleans.isFalse(value)) {
             return new AutoExpandReplicas(0, 0, false);
         }
         final int dash = value.indexOf('-');

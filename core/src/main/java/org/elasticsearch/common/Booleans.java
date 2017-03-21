@@ -23,9 +23,8 @@ package org.elasticsearch.common;
  *
  */
 public class Booleans {
-
     /**
-     * returns true if the a sequence of chars is one of "true","false","on","off","yes","no","0","1"
+     * returns true iff the sequence of chars is one of "true","false".
      *
      * @param text   sequence to check
      * @param offset offset to start
@@ -35,62 +34,32 @@ public class Booleans {
         if (text == null || length == 0) {
             return false;
         }
-        if (length == 1) {
-            return text[offset] == '0' || text[offset] == '1';
-        }
-        if (length == 2) {
-            return (text[offset] == 'n' && text[offset + 1] == 'o') || (text[offset] == 'o' && text[offset + 1] == 'n');
-        }
-        if (length == 3) {
-            return (text[offset] == 'o' && text[offset + 1] == 'f' && text[offset + 2] == 'f') ||
-                    (text[offset] == 'y' && text[offset + 1] == 'e' && text[offset + 2] == 's');
-        }
-        if (length == 4) {
-            return (text[offset] == 't' && text[offset + 1] == 'r' && text[offset + 2] == 'u' && text[offset + 3] == 'e');
-        }
-        if (length == 5) {
-            return (text[offset] == 'f' && text[offset + 1] == 'a' && text[offset + 2] == 'l' && text[offset + 3] == 's' && text[offset + 4] == 'e');
-        }
-        return false;
-    }
-
-    public static Boolean parseBooleanExact(String value, Boolean defaultValue) {
-        if (Strings.hasText(value)) {
-            return parseBooleanExact(value);
-        }
-        return defaultValue;
-    }
-
-    /***
-     *
-     * @return true/false
-     * throws exception if string cannot be parsed to boolean
-     */
-    public static Boolean parseBooleanExact(String value) {
-        boolean isFalse = isExplicitFalse(value);
-        if (isFalse) {
-            return false;
-        }
-        boolean isTrue = isExplicitTrue(value);
-        if (isTrue) {
-            return true;
-        }
-
-        throw new IllegalArgumentException("Failed to parse value [" + value + "] cannot be parsed to boolean [ true/1/on/yes OR false/0/off/no ]");
+        return isBoolean(new String(text, offset, length));
     }
 
     /**
      * @return true iff the provided value is either "true" or "false".
      */
-    public static boolean isStrictlyBoolean(String value) {
+    public static boolean isBoolean(String value) {
         return "false".equals(value) || "true".equals(value);
     }
 
-    public static Boolean parseBoolean(String value, Boolean defaultValue) {
-        if (value == null) { // only for the null case we do that here!
-            return defaultValue;
+    public static Boolean parseBoolean(String value) {
+        if (isFalse(value)) {
+            return false;
         }
-        return parseBoolean(value, false);
+        if (isTrue(value)) {
+            return true;
+        }
+
+        throw new IllegalArgumentException("Failed to parse value [" + value + "] as only [true] or [false] are allowed.");
+    }
+
+    public static Boolean parseBoolean(String value, Boolean defaultValue) {
+        if (Strings.hasText(value)) {
+            return parseBoolean(value);
+        }
+        return defaultValue;
     }
     /**
      * Returns <code>true</code> iff the value is neither of the following:
@@ -98,10 +67,10 @@ public class Booleans {
      *   otherwise <code>false</code>
      */
     public static boolean parseBoolean(String value, boolean defaultValue) {
-        if (value == null) {
-            return defaultValue;
+        if (Strings.hasText(value)) {
+            return parseBoolean(value);
         }
-        return !(value.equals("false") || value.equals("0") || value.equals("off") || value.equals("no"));
+        return defaultValue;
     }
 
     /**
@@ -109,8 +78,8 @@ public class Booleans {
      *   <tt>false</tt>, <tt>0</tt>, <tt>off</tt>, <tt>no</tt>
      *   otherwise <code>false</code>
      */
-    public static boolean isExplicitFalse(String value) {
-        return value != null && (value.equals("false") || value.equals("0") || value.equals("off") || value.equals("no"));
+    public static boolean isFalse(String value) {
+        return value != null && (value.equals("false"));
     }
 
     /**
@@ -118,8 +87,8 @@ public class Booleans {
      *   <tt>true</tt>, <tt>1</tt>, <tt>on</tt>, <tt>yes</tt>
      *   otherwise <code>false</code>
      */
-    public static boolean isExplicitTrue(String value) {
-        return value != null && (value.equals("true") || value.equals("1") || value.equals("on") || value.equals("yes"));
+    public static boolean isTrue(String value) {
+        return value != null && (value.equals("true"));
     }
 
 }

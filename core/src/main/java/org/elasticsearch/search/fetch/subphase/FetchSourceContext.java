@@ -45,7 +45,6 @@ import java.util.function.Function;
  * Context used to fetch the {@code _source}.
  */
 public class FetchSourceContext implements Writeable, ToXContent {
-    private static final DeprecationLogger DEPRECATION_LOGGER = new DeprecationLogger(Loggers.getLogger(FetchSourceContext.class));
 
     public static final ParseField INCLUDES_FIELD = new ParseField("includes", "include");
     public static final ParseField EXCLUDES_FIELD = new ParseField("excludes", "exclude");
@@ -99,15 +98,12 @@ public class FetchSourceContext implements Writeable, ToXContent {
 
         String source = request.param("_source");
         if (source != null) {
-            if (Booleans.isExplicitTrue(source)) {
+            if (Booleans.isTrue(source)) {
                 fetchSource = true;
-            } else if (Booleans.isExplicitFalse(source)) {
+            } else if (Booleans.isFalse(source)) {
                 fetchSource = false;
             } else {
                 source_includes = Strings.splitStringByCommaToArray(source);
-            }
-            if (fetchSource != null && Booleans.isStrictlyBoolean(source) == false) {
-                DEPRECATION_LOGGER.deprecated("Expected a boolean [true/false] for request parameter [_source] but got [{}]", source);
             }
 
         }
