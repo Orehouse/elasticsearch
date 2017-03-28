@@ -20,10 +20,15 @@
 package org.elasticsearch.common.joda;
 
 import org.elasticsearch.ElasticsearchParseException;
+import org.elasticsearch.common.joda.Commands.AdjustDateFieldCommand;
+import org.elasticsearch.common.joda.Commands.AdjustmentCommandFactory;
 import org.joda.time.DateTimeZone;
 import org.joda.time.MutableDateTime;
 import org.joda.time.format.DateTimeFormatter;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.function.LongSupplier;
 
@@ -37,10 +42,12 @@ import java.util.function.LongSupplier;
 public class DateMathParser {
 
     private final FormatDateTimeFormatter dateTimeFormatter;
+    private final AdjustmentCommandFactory adjustmentCommandFactory;
 
     public DateMathParser(FormatDateTimeFormatter dateTimeFormatter) {
         Objects.requireNonNull(dateTimeFormatter);
         this.dateTimeFormatter = dateTimeFormatter;
+        this.adjustmentCommandFactory = new AdjustmentCommandFactory();
     }
 
     public long parse(String text, LongSupplier now) {
@@ -76,6 +83,7 @@ public class DateMathParser {
         if (timeZone == null) {
             timeZone = DateTimeZone.UTC;
         }
+        ArrayList<AdjustDateFieldCommand> adjustmentCommands = new ArrayList<>();
         MutableDateTime dateTime = new MutableDateTime(time, timeZone);
         for (int i = 0; i < mathString.length(); ) {
             char c = mathString.charAt(i++);
@@ -118,71 +126,74 @@ public class DateMathParser {
                 }
             }
             char unit = mathString.charAt(i++);
-            MutableDateTime.Property propertyToRound = null;
             switch (unit) {
                 case 'y':
                     if (round) {
-                        propertyToRound = dateTime.yearOfCentury();
+                        dateTime.yearOfCentury().roundFloor();
                     } else {
-                        dateTime.addYears(sign * num);
+                        adjustmentCommands.add(this.adjustmentCommandFactory.createAdjustYearCommand(sign * num));
                     }
                     break;
                 case 'M':
                     if (round) {
-                        propertyToRound = dateTime.monthOfYear();
+                        dateTime.monthOfYear().roundFloor();
                     } else {
-                        dateTime.addMonths(sign * num);
+                        adjustmentCommands.add(this.adjustmentCommandFactory.createAdjustMonthCommand(sign * num));
                     }
                     break;
                 case 'w':
                     if (round) {
-                        propertyToRound = dateTime.weekOfWeekyear();
+                        dateTime.weekOfWeekyear().roundFloor();
                     } else {
-                        dateTime.addWeeks(sign * num);
+                        adjustmentCommands.add(this.adjustmentCommandFactory.createAdjustWeekCommand(sign * num));
                     }
                     break;
                 case 'd':
                     if (round) {
-                        propertyToRound = dateTime.dayOfMonth();
+                        dateTime.dayOfMonth().roundFloor();
                     } else {
-                        dateTime.addDays(sign * num);
+                        adjustmentCommands.add(this.adjustmentCommandFactory.createAdjustDayCommand(sign * num));
                     }
                     break;
                 case 'h':
                 case 'H':
                     if (round) {
-                        propertyToRound = dateTime.hourOfDay();
+                        dateTime.hourOfDay().roundFloor();
                     } else {
-                        dateTime.addHours(sign * num);
+                        adjustmentCommands.add(this.adjustmentCommandFactory.createAdjustHourCommand(sign * num));
                     }
                     break;
                 case 'm':
                     if (round) {
-                        propertyToRound = dateTime.minuteOfHour();
+                        dateTime.minuteOfHour().roundFloor();
                     } else {
-                        dateTime.addMinutes(sign * num);
+                        adjustmentCommands.add(this.adjustmentCommandFactory.createAdjustMinuteCommand(sign * num));
                     }
                     break;
                 case 's':
                     if (round) {
-                        propertyToRound = dateTime.secondOfMinute();
+                        dateTime.secondOfMinute().roundFloor();
                     } else {
-                        dateTime.addSeconds(sign * num);
+                        adjustmentCommands.add(this.adjustmentCommandFactory.createAdjustSecondCommand(sign * num));
                     }
                     break;
                 default:
                     throw new ElasticsearchParseException("unit [{}] not supported for date math [{}]", unit, mathString);
             }
-            if (propertyToRound != null) {
-                if (roundUp) {
-                    // we want to go up to the next whole value, even if we are already on a rounded value
-                    propertyToRound.add(1);
-                    propertyToRound.roundFloor();
-                    dateTime.addMillis(-1); // subtract 1 millisecond to get the largest inclusive value
-                } else {
-                    propertyToRound.roundFloor();
-                }
-            }
+        }
+
+        for (AdjustDateFieldCommand command : adjustmentCommands) {
+            command.adjust(dateTime);
+        }
+        AdjustDateFieldCommand commandWithMinPrecision = Collections.min(adjustmentCommands);
+        MutableDateTime.Property propertyToRound = commandWithMinPrecision.getPropertyToRound(dateTime);
+        if (roundUp) {
+            // we want to go up to the next whole value, even if we are already on a rounded value
+            propertyToRound.add(1);
+            propertyToRound.roundFloor();
+            dateTime.addMillis(-1); // subtract 1 millisecond to get the largest inclusive value
+        } else {
+            propertyToRound.roundFloor();
         }
         return dateTime.getMillis();
     }
