@@ -40,4 +40,6 @@ public interface MatrixStats extends Aggregation {
     double getCovariance(String fieldX, String fieldY);
     /** return the correlation coefficient of field x and field y */
     double getCorrelation(String fieldX, String fieldY);
+    /** return the quantile90 value */
+    double getQuantile90(String field);
 }

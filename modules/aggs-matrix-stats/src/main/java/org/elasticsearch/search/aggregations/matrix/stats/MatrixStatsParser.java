@@ -51,8 +51,8 @@ public class MatrixStatsParser extends NumericValuesSourceParser {
     }
 
     @Override
-    protected MatrixStatsAggregationBuilder createFactory(String aggregationName, ValuesSourceType valuesSourceType,
-                                                          ValueType targetValueType, Map<ParseField, Object> otherOptions) {
+    protected org.elasticsearch.search.aggregations.matrix.stats.MatrixStatsAggregationBuilder createFactory(String aggregationName, ValuesSourceType valuesSourceType,
+                                                                                                             ValueType targetValueType, Map<ParseField, Object> otherOptions) {
         MatrixStatsAggregationBuilder builder = new MatrixStatsAggregationBuilder(aggregationName);
         String mode = (String)otherOptions.get(MULTIVALUE_MODE_FIELD);
         if (mode != null) {

@@ -139,6 +139,14 @@ public class InternalMatrixStats extends InternalMetricsAggregation implements M
         return results.getCorrelation(fieldX, fieldY);
     }
 
+    @Override
+    public double getQuantile90(String field) {
+        if (results == null) {
+            return Double.NaN;
+        }
+        return results.getQuantile90();
+    }
+
     static class Fields {
         public static final String FIELDS = "fields";
         public static final String NAME = "name";
@@ -212,6 +220,8 @@ public class InternalMatrixStats extends InternalMetricsAggregation implements M
                     return results.getCovariances();
                 case "correlation":
                     return results.getCorrelations();
+                case "quantile90":
+                    return results.getQuantile90();
                 default:
                     throw new IllegalArgumentException("Found unknown path element [" + element + "] in [" + getName() + "]");
             }

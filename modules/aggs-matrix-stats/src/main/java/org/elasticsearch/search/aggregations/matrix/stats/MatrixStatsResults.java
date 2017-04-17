@@ -152,6 +152,10 @@ class MatrixStatsResults implements Writeable {
         return Collections.unmodifiableMap(correlation);
     }
 
+    protected double getQuantile90() {
+        return results.quantile90;
+    }
+
     /** return the correlation coefficient between two fields */
     public Double getCorrelation(String fieldX, String fieldY) {
         if (fieldX.equals(fieldY)) {

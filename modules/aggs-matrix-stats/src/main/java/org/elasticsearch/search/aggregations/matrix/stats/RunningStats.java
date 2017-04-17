@@ -24,10 +24,7 @@ import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.io.stream.Writeable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Descriptive stats gathered per shard. Coordinating node computes final correlation and covariance stats
@@ -52,6 +49,15 @@ public class RunningStats implements Writeable, Cloneable {
     protected HashMap<String, Double> kurtosis;
     /** covariance values */
     protected HashMap<String, HashMap<String, Double>> covariances;
+    /** 90% quantile (percentile) **/
+    protected double quantile90 = 0;
+
+    private HashMap<String, ArrayList<Double>> lastObservations;
+    private HashMap<String, ArrayList<Double>> markerHeights;
+    private HashMap<String, ArrayList<Integer>> markerPositions;
+    private HashMap<String, ArrayList<Double>> desiredMarkerPositions;
+    private HashMap<String, ArrayList<Double>> desiredMarkerDeltas;
+
 
     public RunningStats() {
         init();
@@ -72,6 +78,11 @@ public class RunningStats implements Writeable, Cloneable {
         kurtosis = new HashMap<>();
         covariances = new HashMap<>();
         variances = new HashMap<>();
+        lastObservations = new HashMap<>();
+        markerHeights = new HashMap<>();
+        markerPositions = new HashMap<>();
+        desiredMarkerPositions = new HashMap<>();
+        desiredMarkerDeltas = new HashMap<>();
     }
 
     /** Ctor to create an instance of running statistics */
@@ -94,6 +105,8 @@ public class RunningStats implements Writeable, Cloneable {
         kurtosis = (HashMap<String, Double>)in.readGenericValue();
         // read covariances
         covariances = (HashMap<String, HashMap<String, Double>>)in.readGenericValue();
+        //90 quantile
+        quantile90 = (Double)in.readGenericValue();
     }
 
     @Override
@@ -114,6 +127,8 @@ public class RunningStats implements Writeable, Cloneable {
         out.writeGenericValue(kurtosis);
         // covariances
         out.writeGenericValue(covariances);
+        //90 quantile
+        out.writeGenericValue(quantile90);
     }
 
     /** updates running statistics with a documents field values **/
@@ -169,6 +184,98 @@ public class RunningStats implements Writeable, Cloneable {
         }
 
         this.updateCovariance(fieldNames, deltas);
+        this.updateQuantiles(fieldNames, fieldVals);
+    }
+
+    private void updateQuantiles(final String[] fieldNames, final double[] fieldVals) {
+        if (docCount == 0) {
+            for (String fieldName : fieldNames) {
+                this.lastObservations.put(fieldName, new ArrayList<>());
+
+                this.markerHeights.put(fieldName, new ArrayList<>());
+                this.markerHeights.get(fieldName).add(0, 1.0);
+                this.markerHeights.get(fieldName).add(1, 2.0);
+                this.markerHeights.get(fieldName).add(2, 3.0);
+                this.markerHeights.get(fieldName).add(3, 4.0);
+                this.markerHeights.get(fieldName).add(4, 5.0);
+
+                this.markerPositions.put(fieldName, new ArrayList<>());
+                this.markerPositions.get(fieldName).add(0, 1);
+                this.markerPositions.get(fieldName).add(1, 2);
+                this.markerPositions.get(fieldName).add(2, 3);
+                this.markerPositions.get(fieldName).add(3, 4);
+                this.markerPositions.get(fieldName).add(4, 5);
+
+                this.desiredMarkerPositions.put(fieldName, new ArrayList<>());
+                this.desiredMarkerPositions.get(fieldName).add(0, 1.0);
+                double quantile = 0.9;
+                this.desiredMarkerPositions.get(fieldName).add(1, 1 + 2 * quantile);
+                this.desiredMarkerPositions.get(fieldName).add(2, 1 + 4 * quantile);
+                this.desiredMarkerPositions.get(fieldName).add(3, 3 + 2 * quantile);
+                this.desiredMarkerPositions.get(fieldName).add(0, 5.0);
+
+                this.desiredMarkerDeltas.put(fieldName, new ArrayList<>());
+                this.desiredMarkerDeltas.get(fieldName).add(0, 0.0);
+                this.desiredMarkerDeltas.get(fieldName).add(0, quantile / 2);
+                this.desiredMarkerDeltas.get(fieldName).add(0, quantile);
+                this.desiredMarkerDeltas.get(fieldName).add(0, (1 + quantile) / 2);
+                this.desiredMarkerDeltas.get(fieldName).add(0, 1.0);
+            }
+        }
+
+        if (docCount < 5) {
+            for (int i = 0; i < fieldNames.length; i++) {
+                String fieldName = fieldNames[i];
+                Double fieldValue = fieldVals[i];
+                this.lastObservations.get(fieldNames[i]).add((int)docCount, fieldValue);
+            }
+        } else {
+            for (int i = 0; i < fieldNames.length; i++) {
+                int k;
+                String fieldName = fieldNames[i];
+                Double fieldValue = fieldVals[i];
+                if (fieldValue < markerHeights.get(fieldName).get(0)) {
+                    markerHeights.get(fieldName).set(0, fieldValue);
+                    k = 0;
+                } else if (fieldValue < markerHeights.get(fieldName).get(1)) {
+                    k = 1;
+                } else if (fieldValue < markerHeights.get(fieldName).get(2)) {
+                    k = 2;
+                } else if (fieldValue < markerHeights.get(fieldName).get(3)) {
+                    k = 3;
+                } else if (fieldValue <= markerHeights.get(fieldName).get(4)) {
+                    k = 4;
+                } else {
+                    markerHeights.get(fieldName).set(4, fieldValue);
+                    k = 5;
+                }
+
+                for (int j = k; j < 4; j++) {
+                    this.markerPositions.get(fieldName).set(j, this.markerPositions.get(fieldName).get(j) + 1);
+                }
+                for (int j = 0; j < 4; j++) {
+                    this.desiredMarkerPositions.get(fieldName).set(j, this.desiredMarkerPositions.get(fieldName).get(j) + this.desiredMarkerDeltas.get(fieldName).get(j));
+                }
+                double[] d = new double[5];
+                for (int j = 1; j < 3; j++) {
+                    ArrayList<Integer> n = this.markerPositions.get(fieldName);
+                    ArrayList<Double> q = this.desiredMarkerPositions.get(fieldName);
+                    d[j] = q.get(j) - n.get(j);
+                    if (d[j] >= 1 && n.get(j + 1) - n.get(j) > 1
+                        || d[j] <= -1 && n.get(j - 1) - n.get(j) < -1) {
+                        d[j] = d[j] > 0 ? 1 : d[j] == 0 ? 0 : -1;
+                        this.markerHeights.get(fieldName).set(j,
+                            this.markerHeights.get(fieldName).get(j) + d[j]
+                                / (n.get(j + 1) - n.get(j - 1))
+                                * ((n.get(j) - n.get(j - 1) + d[j]) * (q.get(j + 1) - q.get(j)) / (n.get(j + 1) - n.get(j))
+                                + (n.get(j + 1) - n.get(j) - d[j]) * (q.get(j) - q.get(j - 1)) / (n.get(j) - n.get(j - 1))));
+                        n.set(j, (int) Math.round(n.get(j) + d[j]));
+                    }
+                }
+
+                quantile90 = this.markerHeights.get(fieldName).get(2);
+            }
+        }
     }
 
     /** Update covariance matrix */
@@ -218,6 +325,7 @@ public class RunningStats implements Writeable, Cloneable {
                     this.covariances.put(fieldName, other.covariances.get(fieldName));
                 }
                 this.docCount = other.docCount;
+                this.quantile90 = other.quantile90;
             }
             return;
         }
@@ -270,6 +378,8 @@ public class RunningStats implements Writeable, Cloneable {
             // kurtosis
             nk = kurtA + kurtB + d4 * nA * nB * (nA2 - nA * nB + nB2) / (n2 * docCount);
             kurtosis.put(fieldName, nk + 6D * d2 * (nA2 * varB + nB2 * varA) / n2 + 4D * d * (nA * skewB - nB * skewA) / docCount);
+            this.quantile90 = (this.quantile90 * this.docCount + other.quantile90 * other.docCount)
+                / (this.docCount + other.docCount);
         }
 
         this.mergeCovariance(other, deltas);
